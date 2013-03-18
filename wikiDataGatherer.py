@@ -6,7 +6,6 @@ import re
 import time
 import random
 from urllib.request import *
-
 from html.parser import HTMLParser
 
 class GetInfoInTagParser (HTMLParser):
@@ -21,7 +20,7 @@ class GetInfoInTagParser (HTMLParser):
   def handle_starttag (self, tag, attrs):
     if (tag in self.m_tags):
       tagIndex = self.m_tags.index(tag)
-      # check attr if set any:
+      # check attr if set ansdfvy:
       self.m_isTagEncountered [tagIndex] = True
       if (len(self.m_isTagEncountered) > 1):
         self.m_isTagEncountered [tagIndex - 1] = False
@@ -37,6 +36,10 @@ class GetInfoInTagParser (HTMLParser):
     if (True in self.m_isTagEncountered):
       self.m_currentData += " " + data
 
+  # Badass expression to delete whitespaces in beginning and end of data and remover dublicated whitespaces.
+  def getData (self):
+    return " ".join (self.m_currentData.strip().split())
+
 
 # @arg url - unicode string - Html page url
 # @return unicode string - Html page content
@@ -48,6 +51,7 @@ def GetURL (url):
   return response.read ().decode('utf-8')
 
 
+# TODO: only russians
 # @arg numberOfPagesToDownload (int) - total number of random articles requests
 # @return none
 def GetWikipediaPages (numberOfPagesToDownload = 10000, folderName = "wikipedia"):
@@ -64,17 +68,9 @@ def GetWikipediaPages (numberOfPagesToDownload = 10000, folderName = "wikipedia"
     time.sleep (1 + 0.05 * random.randrange (1, 20)) # wait 1-2 seconds for not being suspected ;-)
     iteration += 1
 
-
+# TODO: @arg @return
 def GetRawTextFromWikiPage (page):
   parser = GetInfoInTagParser (["p"])
   parser.feed (page)
-  return parser.m_currentData
+  return parser.getData()
 
-def main ():
-  freqDict = GetFreqDictFromSavedWikiPages("wikipedia")
-  PrintFreqDict (freqDict, "fd.txt")
-  #GetWikipediaPages (numberOfPagesToDownload = 10000, folderName = "wikipedia")
-
-
-if __name__ == '__main__':
-  main()

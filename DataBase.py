@@ -1,6 +1,8 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 
+import wikiDataGatherer
+
 # @arg filename - unicode string - Name of file to save (will be rewrited)
 # @return unicode string - Html page content
 def GetPageFromFile (filename):
@@ -20,21 +22,14 @@ def SavePageToFile (page, filename):
 
 
 # @arg nameOfFolder (utf string) name of folder to seek for ht
+# TODO: @return
 def GetDataFromSavedWikiPages (folderName = "wikipedia"):
   """ generate dictionary {word: wordcount} from normal forms of word """
   data = ""
-  files = []
   for i in range(1,2500):
-    #files.append (folderName + "/ruwiki_page_0.html")
-    files.append (folderName + "/ruwiki_page_" + str(i) + ".html")
-  for filename in files:
+    filename = folderName + "/ruwiki_page_" + str(i) + ".html"
     print(filename)
     page = GetPageFromFile (filename)
-    currentPageData = GetRawTextFromWikiPage (page)
-    #print (type(currentPageData))
-    #print (currentPageData)
-    fd = open("x.txt", 'w', encoding='utf-8')
-    fd.write(currentPageData)
-    fd.close()
+    currentPageData = wikiDataGatherer.GetRawTextFromWikiPage (page)
     data += currentPageData
   return data
