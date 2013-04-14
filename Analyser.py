@@ -1,6 +1,30 @@
 #!/usr/bin/python
 #-*- coding: utf-8 -*-
 
+from nltk.stem.lancaster import LancasterStemmer
+import nltk
+
+
+def NormalizeText (text, bannedPOS = ('CC', 'RB', 'JJ')):
+  # tokenizing
+  tokens = nltk.word_tokenize(text)
+  text = nltk.Text(tokens)
+  # stemming
+  st = LancasterStemmer()
+  res = ""
+  for w in text:
+    norm = st.stem(w)
+    res += ' ' + norm
+  return res.strip()
+  # or lemmatizing
+  #wnl = nltk.WordNetLemmatizer()
+  #return wnl.lemmatize(text)
+  # remove certain parts of speech
+
+def GetTexts (directory):
+    return ''
+
+
 
 # @arg rawtext (utf string) text from which frequncy dict is formed
 def GetFrequencyDict (rawtext, lang = "ru"):
