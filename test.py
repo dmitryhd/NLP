@@ -6,6 +6,8 @@ import unittest
 import wikiDataGatherer
 import DataBase
 import Analyser
+from Analyser import *
+from DataBase import *
 
 # ----------- Unit tests -------------
 
@@ -51,8 +53,12 @@ class TestWikiDataGatherer (unittest.TestCase):
 
 class TestGetText (unittest.TestCase):
     def testSimpleGetText(self):
-        text = Analyser.GetTexts('pdftestdir')
-        self.assertEqual (text, 'aaa bbb ccc')
+        text = Analyser.GetTexts('testpdf01')
+        self.assertEqual (text[:27], 'Proceedings of the IEEE Wor')
+
+    def testRecursive(self):
+        text = Analyser.GetTexts('testpdf02')
+        self.assertEqual (text[:27], 'Proceedings of the IEEE Wor')
 
 
 class TestDataBase (unittest.TestCase):
@@ -68,18 +74,23 @@ class TestDataBase (unittest.TestCase):
         folderName = "wikipedia"
         # TODO
 
-    def testOneArticle(self):
+    def testSqlOneArticle(self):
         """ sql save of one page """
         text = "aaa bbbb cccc dddd dfvsdf aaa"
+        fd = GetFrequencyDict (text)
+        article = DataBase.Article(1, "sci", "name1", text, text, fd)
+        try:
+            os.remove("test.db")
+        except:
+            print ("no such file")
         sqlOpWrite = DataBase.SQLOperator("test.db")
-        sqlOpWrite.SaveArticle(DataBase.Article(1, "sci", text))
+        sqlOpWrite.SaveArticle(article)
         sqlOpWrite.commit()
         articles = sqlOpWrite.ReadAllArticles()
-        print("!gete {}".format(articles))
-        expectedArticles = [DataBase.Article(1, "sci", text)]
+        expectedArticles = [article]
         self.assertEqual(articles, expectedArticles)
+        print("---- get article {}, expected {}".format(articles, expectedArticles))
         sqlOpWrite.close()
-        os.remove("test.db")
 
 
 class TestMorphologicalAnalyser(unittest.TestCase):
@@ -115,9 +126,7 @@ class TestFrequencyDict (unittest.TestCase):
         # PrintFreqDict (freqDict, "fd_test.txt")
         expected = {
             "hello": 2,
-            "bob": 1,
             "let": 1,
-            "see": 1,
             "artic": 1,
             "giv": 1}
         self.assertEqual(freqDict, expected)
