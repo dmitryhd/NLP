@@ -14,7 +14,7 @@ import pickle
 
 
 MinCnt = 1  # minimum number of word in document for word to be considered
-MaxWords = 100  # maximum number of words in frequency dictionary
+MaxWords = 200  # maximum number of words in frequency dictionary
 
 
 class Article (object):
@@ -100,20 +100,30 @@ def ClassifyArticles(articles_file_names,
     total_word_prob_b = GetTotalWordProb(db_name_b)
     for fname in articles_file_names:
         print("classify article: {}".format(fname))
-        with open('data/' + fname, 'r') as fd:
-            text = fd.read()
+        file_name, file_extension = os.path.splitext(fname)
+        if file_extension == '.pdf':
+            pdftotextcommand = ['pdftotext', '-enc', 'UTF-8']
+            command = pdftotextcommand + [fname, 'tmp']
+            process = Popen(command, stdout=PIPE)
+            os.waitpid(process.pid, 0)
+            with open('tmp', 'r') as fd:
+                text = fd.read()
+            os.remove('tmp')
+        else:
+            with open(fname, 'r') as fd:
+                text = fd.read()
         norm_fd = GetFrequencyDict(NormalizeText(text))
         prob_text_belong_to_a = BayesProb(norm_fd, total_word_prob_a)
         prob_text_belong_to_b = BayesProb(norm_fd, total_word_prob_b)
         value = 0
         if prob_text_belong_to_a > prob_text_belong_to_b:
             value = prob_text_belong_to_a/prob_text_belong_to_b
-            print('article %30s belongs to class A, p_a/p_b = %e' %
-                 (fname, value))
+            print('article %30s belongs to class A, p_a %e p_b %e' %
+                 (fname, prob_text_belong_to_a, prob_text_belong_to_b))
         else:
             value = prob_text_belong_to_b/prob_text_belong_to_a
             print('article %30s belongs to class B, p_b/p_a = %e' %
-                 (fname, value))
+                 (fname, prob_text_belong_to_a, prob_text_belong_to_b))
 
 
 def GetTotalWordProb(dbname):
@@ -188,6 +198,8 @@ def NormalizeText(text):
     with open("exchange_out.txt", 'r') as rfd:
         text = rfd.read()
     os.chdir(cwd)
+    os.remove("exchange_out.txt")
+    os.remove("exchange_inp.txt")
     return text.strip()
 
 
@@ -303,7 +315,13 @@ def GetSeparateTextsFromPDF(directory, db_path='data_bases/sciAm2008-2011.db'):
 
 if __name__ == '__main__':
     to_compare = [
-        'A_Christmas_Carol-Charles_Dickens.txt',
-        'A_Descent_Into_the_Maelstrom-Edgar_Allan_Poe.txt'
+        #'A_Christmas_Carol-Charles_Dickens.txt',
+        #'A_Descent_Into_the_Maelstrom-Edgar_Allan_Poe.txt',
+        'From_Russia_with_love_a_James_Bond_nove_-_Ian.pdf',
+        'Goldfinger_007_a_James_Bond_novel_-_Ian_Flemi.pdf',
+        'Moonraker_-_Ian_Fleming.pdf',
+        'Weil_2009.pdf',
+        'Nordhaus_2010.pdf',
+        'Weil_2011.pdf'
     ]
     ClassifyArticles(to_compare)
