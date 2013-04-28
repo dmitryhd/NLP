@@ -14,7 +14,7 @@ import pickle
 
 
 MinCnt = 1  # minimum number of word in document for word to be considered
-MaxWords = 200  # maximum number of words in frequency dictionary
+MaxWords = 50  # maximum number of words in frequency dictionary
 
 
 class Article (object):
@@ -92,13 +92,12 @@ class SQLOperator ():
         self.conn.close()
 
 
-def ClassifyArticles(articles_file_names,
-                     db_name_a='data_bases/sciAm2008-2011.db',
-                     db_name_b='data_bases/fiction.db'):
-    """ bayesian classify given articles to class A, or B"""
-    total_word_prob_a = GetTotalWordProb(db_name_a)
-    total_word_prob_b = GetTotalWordProb(db_name_b)
-    for fname in articles_file_names:
+def CreateBdOfArticles(directory_name, db_name):
+    cwd = os.getcwd()
+    os.chdir(directory_name)
+    article_id = 0
+    articles = []
+    for fname in glob.glob('*.pdf'):
         print("classify article: {}".format(fname))
         file_name, file_extension = os.path.splitext(fname)
         if file_extension == '.pdf':
@@ -112,18 +111,53 @@ def ClassifyArticles(articles_file_names,
         else:
             with open(fname, 'r') as fd:
                 text = fd.read()
-        norm_fd = GetFrequencyDict(NormalizeText(text))
-        prob_text_belong_to_a = BayesProb(norm_fd, total_word_prob_a)
-        prob_text_belong_to_b = BayesProb(norm_fd, total_word_prob_b)
+        norm_text = NormalizeText(text)
+        article = Article(article_id, "fic", file_name, text,
+                          norm_text, GetFrequencyDict(norm_text))
+        articles.append(article)
+        article_id += 1
+    os.chdir(cwd)    # save to Data Base
+    db_operator = SQLOperator(db_name)
+    for article in articles:
+        db_operator.save_article(article)
+    db_operator.commit()
+    db_operator.close()
+
+
+
+def ClassifyArticles(articles_db_filename,
+                     db_name_a='data_bases/sciAm2008-2011.db',
+                     db_name_b='data_bases/fiction.db'):
+    """ bayesian classify given articles to class A, or B"""
+    total_word_prob_a = GetTotalWordProb(db_name_a)
+    total_word_prob_b = GetTotalWordProb(db_name_b)
+#    dict_a = {}
+#    for word in list(set(total_word_prob_a.keys()) - set(total_word_prob_b.keys())):
+#        dict_a[word] = total_word_prob_a[word]
+#    #print("---------------")
+#    #PrintFancyDict (dict_a, 10000)
+#
+#    dict_b = {}
+#    for word in list(set(total_word_prob_b.keys()) - set(total_word_prob_a.keys())):
+#        dict_b[word] = total_word_prob_b[word]
+#    #print("---------------")
+#    #PrintFancyDict (dict_a, 10000)
+#    total_word_prob_a = dict_a
+#    total_word_prob_b = dict_b
+
+    db_operator = SQLOperator(articles_db_filename)
+    for article in db_operator.read_all_articles():
+        prob_text_belong_to_a = BayesProb(GetFrequencyDict(article.normtext), total_word_prob_a)
+        prob_text_belong_to_b = BayesProb(GetFrequencyDict(article.normtext), total_word_prob_b)
         value = 0
         if prob_text_belong_to_a > prob_text_belong_to_b:
             value = prob_text_belong_to_a/prob_text_belong_to_b
             print('article %30s belongs to class A, p_a %e p_b %e' %
-                 (fname, prob_text_belong_to_a, prob_text_belong_to_b))
+                 (article.name, prob_text_belong_to_a, prob_text_belong_to_b))
         else:
             value = prob_text_belong_to_b/prob_text_belong_to_a
-            print('article %30s belongs to class B, p_b/p_a = %e' %
-                 (fname, prob_text_belong_to_a, prob_text_belong_to_b))
+            print('article %30s belongs to class B, p_b %e p_a = %e' %
+                 (article.name, prob_text_belong_to_a, prob_text_belong_to_b))
 
 
 def GetTotalWordProb(dbname):
@@ -153,15 +187,18 @@ def BayesProb(art_norm_fd, total_word_prob):
     """ Function to calculate probability, that text belongs to group with given total_word_prob dictionary
         arguments: frequency dict of given text, and total dictionary of all words in cluster
     """
-    min_prob = min(total_word_prob.values())
+    min_prob = min(total_word_prob.values())/2
                    # calculate minimum probability, for missing word.
     prob = 1  # result
     if not min_prob:
-        min_prob = 0.1
+        min_prob = 0.01
+    #print("---------")
     for word in art_norm_fd:
         if word not in total_word_prob:
+     #       print ("word: {} prob: {}".format(word, min_prob))
             prob *= min_prob  # sure, we didn't mutiply by zero!
         else:
+     #       print ("word: {} prob: {}".format(word, total_word_prob[word]))
             prob *= total_word_prob[word]
         assert not prob == 0
     return prob
@@ -197,9 +234,9 @@ def NormalizeText(text):
     os.system('python2 normalize.py')
     with open("exchange_out.txt", 'r') as rfd:
         text = rfd.read()
-    os.chdir(cwd)
     os.remove("exchange_out.txt")
     os.remove("exchange_inp.txt")
+    os.chdir(cwd)
     return text.strip()
 
 
@@ -314,14 +351,8 @@ def GetSeparateTextsFromPDF(directory, db_path='data_bases/sciAm2008-2011.db'):
 
 
 if __name__ == '__main__':
-    to_compare = [
-        #'A_Christmas_Carol-Charles_Dickens.txt',
-        #'A_Descent_Into_the_Maelstrom-Edgar_Allan_Poe.txt',
-        'From_Russia_with_love_a_James_Bond_nove_-_Ian.pdf',
-        'Goldfinger_007_a_James_Bond_novel_-_Ian_Flemi.pdf',
-        'Moonraker_-_Ian_Fleming.pdf',
-        'Weil_2009.pdf',
-        'Nordhaus_2010.pdf',
-        'Weil_2011.pdf'
-    ]
-    ClassifyArticles(to_compare)
+    #ClassifyArticles(to_compare)
+    #CreateBdOfArticles('.','test_sample.db')
+    ClassifyArticles('test_sample.db', 'data_bases/sci_articles.db')
+#    total_word_prob_a = GetTotalWordProb('data_bases/sciAm2008-2011.db')
+#    total_word_prob_b = GetTotalWordProb('data_bases/fiction.db')
