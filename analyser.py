@@ -45,51 +45,34 @@ class Article (object):
         return False
 
 
-class SQLOperator ():
-    """ data base saver """
-    def __init__(self, db_name):
-        self.db_name = db_name
-        self.conn = sqlite3.connect(db_name)
-
-    def save_article(self, article):
-        """ as said """
-        res = False
-        try:
-            res = self.conn.cursor().execute(
-                'SELECT * FROM articles ORDER BY id')
-        except:
-            print("creating new table I")
-            self.conn.cursor().execute(
-                'CREATE TABLE articles (id text, atype text, name text, txt text, normtxt text, freqdict text)')
-        if not res:
-            try:
-                print("creating new table II")
-                self.conn.cursor().execute(
-                    'CREATE TABLE articles (id text, atype text, name text, txt text, normtxt text, freqdict text)')
-            except:
-                print("creating new table - fail!!!")
-        print("Saving...")
-        self.conn.cursor().execute("INSERT INTO articles VALUES (?,?,?,?,?,?)", (str(
+def SaveArticles (db_name, articles):
+    """ Data base saver """
+    conn = sqlite3.connect(db_name)
+    conn.cursor().execute(
+            'CREATE TABLE IF NOT EXISTS articles (id text, atype text, name text, txt text, normtxt text, freqdict text)')
+    for article in articles:
+        conn.cursor().execute("INSERT INTO articles VALUES (?,?,?,?,?,?)", (str(
             article.index), article.atype, article.name, article.text, article.normtext, pickle.dumps(article.freq_dict)))
+    conn.commit()
+    conn.close()
 
-    def read_all_articles(self):
-        """ as said """
-        db_content = []
-        for row in self.conn.cursor().execute('SELECT * FROM articles ORDER BY atype'):
-            article = Article(row[0], row[1], row[
+
+def ReadAllArticles (db_name):
+    """ Get all articles in this db """
+    conn = sqlite3.connect(db_name)
+    db_content = []
+    try:
+        query_result = conn.cursor().execute('SELECT * FROM articles ORDER BY atype')
+    except:
+        print ('cannot read from this database {}'.format(db_name))
+        return []
+    for row in query_result:
+        article = Article(row[0], row[1], row[
                               2], row[3], row[4], pickle.loads(row[5]))
-            # print("get art! {}".format(article))
-            db_content.append(article)
-            # print ("-- read article {}".format(article))
-        return db_content
-
-    def commit(self):
-        """ as said """
-        self.conn.commit()
-
-    def close(self):
-        """ as said """
-        self.conn.close()
+        # print("get art! {}".format(article))
+        db_content.append(article)
+        # print ("-- read article {}".format(article))
+    return db_content
 
 
 def CreateBdOfArticles(directory_name, db_name):
@@ -117,12 +100,7 @@ def CreateBdOfArticles(directory_name, db_name):
         articles.append(article)
         article_id += 1
     os.chdir(cwd)    # save to Data Base
-    db_operator = SQLOperator(db_name)
-    for article in articles:
-        db_operator.save_article(article)
-    db_operator.commit()
-    db_operator.close()
-
+    SaveArticles(db_name, articles)
 
 
 def ClassifyArticles(articles_db_filename,
@@ -131,22 +109,8 @@ def ClassifyArticles(articles_db_filename,
     """ bayesian classify given articles to class A, or B"""
     total_word_prob_a = GetTotalWordProb(db_name_a)
     total_word_prob_b = GetTotalWordProb(db_name_b)
-#    dict_a = {}
-#    for word in list(set(total_word_prob_a.keys()) - set(total_word_prob_b.keys())):
-#        dict_a[word] = total_word_prob_a[word]
-#    #print("---------------")
-#    #PrintFancyDict (dict_a, 10000)
-#
-#    dict_b = {}
-#    for word in list(set(total_word_prob_b.keys()) - set(total_word_prob_a.keys())):
-#        dict_b[word] = total_word_prob_b[word]
-#    #print("---------------")
-#    #PrintFancyDict (dict_a, 10000)
-#    total_word_prob_a = dict_a
-#    total_word_prob_b = dict_b
 
-    db_operator = SQLOperator(articles_db_filename)
-    for article in db_operator.read_all_articles():
+    for article in ReadAllArticles(articles_db_filename):
         prob_text_belong_to_a = BayesProb(GetFrequencyDict(article.normtext), total_word_prob_a)
         prob_text_belong_to_b = BayesProb(GetFrequencyDict(article.normtext), total_word_prob_b)
         value = 0
@@ -164,12 +128,9 @@ def GetTotalWordProb(dbname):
     """ for every word in cluster: get prob. that word is in document)
         return dictionary: word -> probability that word is in any doc in cluster
     """
-    # here we read prepared file with multiple articles in it
-    sqlOpRead = SQLOperator(dbname)
-    # read all texts available in cluster
-    articles = sqlOpRead.read_all_articles()
     # count probability that word is in document
     total_word_prob = {}
+    articles = ReadAllArticles (dbname)
     for article in articles:
         for word in article.freq_dict.keys():
             if (word not in total_word_prob.keys()):
@@ -296,11 +257,7 @@ def GetSeparateTextsFromTXT(fiction_dir='data/fiction/',
     os.chdir(current_dir)
 
     # save to Data Base
-    db_operator = SQLOperator(db_path)
-    for article in articles:
-        db_operator.save_article(article)
-    db_operator.commit()
-    db_operator.close()
+    SaveArticles(db_name, articles)
 
 
 def GetSeparateTextsFromPDF(directory, db_path='data_bases/sciAm2008-2011.db'):
@@ -343,11 +300,7 @@ def GetSeparateTextsFromPDF(directory, db_path='data_bases/sciAm2008-2011.db'):
         os.chdir(currentwd)
     os.chdir("..")
     # save to Data Base
-    db_operator = SQLOperator(db_path)
-    for article in result:
-        db_operator.save_article(article)
-    db_operator.commit()
-    db_operator.close()
+    SaveArticles(db_name, articles)
 
 
 if __name__ == '__main__':
