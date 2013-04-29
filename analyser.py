@@ -64,7 +64,7 @@ def ReadAllArticles (db_name):
     try:
         query_result = conn.cursor().execute('SELECT * FROM articles ORDER BY atype')
     except:
-        print ('cannot read from this database {}'.format(db_name))
+        print 'cannot read from this database {}'.format(db_name)
         return []
     for row in query_result:
         article = Article(row[0], row[1], row[
@@ -81,7 +81,7 @@ def CreateBdOfArticles(directory_name, db_name):
     article_id = 0
     articles = []
     for fname in glob.glob('*.pdf'):
-        print("classify article: {}".format(fname))
+        print "classify article: {}".format(fname)
         file_name, file_extension = os.path.splitext(fname)
         if file_extension == '.pdf':
             pdftotextcommand = ['pdftotext', '-enc', 'UTF-8']
@@ -113,15 +113,13 @@ def ClassifyArticles(articles_db_filename,
     for article in ReadAllArticles(articles_db_filename):
         prob_text_belong_to_a = BayesProb(GetFrequencyDict(article.normtext), total_word_prob_a)
         prob_text_belong_to_b = BayesProb(GetFrequencyDict(article.normtext), total_word_prob_b)
-        value = 0
+        calculated_class = ''
         if prob_text_belong_to_a > prob_text_belong_to_b:
-            value = prob_text_belong_to_a/prob_text_belong_to_b
-            print('article %30s belongs to class A, p_a %e p_b %e' %
-                 (article.name, prob_text_belong_to_a, prob_text_belong_to_b))
+            calculated_class = 'A'
         else:
-            value = prob_text_belong_to_b/prob_text_belong_to_a
-            print('article %30s belongs to class B, p_b %e p_a = %e' %
-                 (article.name, prob_text_belong_to_a, prob_text_belong_to_b))
+            calculated_class = 'B'
+        print 'article %30s belongs to class %s, p_a %e p_b %e' %
+                 (article.name, calculated_class, prob_text_belong_to_a, prob_text_belong_to_b)
 
 
 def GetTotalWordProb(dbname):
@@ -174,7 +172,7 @@ def PrintFancyDict(freq_dict, max_cnt=100):
         freq_dict.items(), key=operator.itemgetter(1), reverse=True)
     cnt = 0
     for item in sorted_dict:
-        print("%50s %.5f" % (item[0], item[1]))
+        print "%50s %.5f" % (item[0], item[1])
         if cnt > max_cnt:
             return
         cnt += 1
@@ -249,7 +247,7 @@ def GetSeparateTextsFromTXT(fiction_dir='data/fiction/',
         with open(file_name, 'r') as fd:
             text = fd.read()
         norm_text = NormalizeText(text)
-        print("******* preparing article from {}".format(file_name))
+        print "******* preparing article from {}".format(file_name)
         article = Article(article_id, "fic", file_name, text,
                           norm_text, GetFrequencyDict(norm_text))
         article_id += 1
@@ -274,7 +272,7 @@ def GetSeparateTextsFromPDF(directory, db_path='data_bases/sciAm2008-2011.db'):
             with open('tmp', 'r') as fd:
                 text = fd.read()
                 norm_text = NormalizeText(text)
-                print("******* preparing article from {}".format(filename))
+                print "******* preparing article from {}".format(filename)
                 article = Article(
                     articleid, "sci", filename, text, norm_text, GetFrequencyDict(norm_text))
                 articles.append(article)
@@ -293,7 +291,7 @@ def GetSeparateTextsFromPDF(directory, db_path='data_bases/sciAm2008-2011.db'):
         try:
             os.chdir(innerdirectory)
         except:
-            print("can't cd dir to {}".format(innerdirectory))
+            print "can't cd dir to {}".format(innerdirectory)
             continue
         result.append(CreateArticlesFromThisDirectory(article_id))
         article_id = len(result)
