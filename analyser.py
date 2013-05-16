@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python2
 #-*- coding: utf-8 -*-
 
 # Author: Dmitryh Khodakov <dmitryhd@gmail.com>
@@ -40,8 +40,6 @@ class Article (object):
                                                              self.atype, self.name, len(self.normtext), subdict)
 
     def __eq__(self, other):
-        # print (self, other)
-        # return self.__dict__ == other.__dict__
         if self.text == other.text and self.atype == other.atype and self.name == other.name:
             return True
         return False
@@ -86,18 +84,22 @@ def GetArticlesFromDir(directory_name):
         """ Should run multiple functions in thread, and wait for all of them 
             arg is list of list
         """
-        threads = []
-        index = 0
-        for function in functions:
-            if arg:
-                thread = Thread(target=function, args=arg[index])
-            else:
-                thread = Thread(target=function)
-            thread.start()
-            threads.append(thread)
-            index += 1
-        for thread in threads:
-            thread.join()
+        max_threads = 10
+        for i in range(0, len(functions)/max_threads + 1):
+            function_pack = functions[i * max_threads : (i + 1) * max_threads]
+            arg_pack = arg[i * max_threads : (i + 1) * max_threads]
+            threads = []
+            index = 0
+            for function in function_pack:
+                if arg:
+                    thread = Thread(target=function, args=arg_pack[index])
+                else:
+                    thread = Thread(target=function)
+                thread.start()
+                threads.append(thread)
+                index += 1
+            for thread in threads:
+                thread.join()
     text_files = []
     articles = []
 
@@ -285,12 +287,8 @@ def GetFrequencyDict(rawtext):
 
 
 if __name__ == '__main__':
-    #ClassifyArticles(to_compare)
-#    articles = GetArticlesFromDir('.')
-    #import sys
-    #articles = GetArticlesFromDirRecursively(sys.argv[1])
-    #SaveArticles(sys.argv[2], articles)
+    import sys
+    articles = GetArticlesFromDirRecursively(sys.argv[1])
+    SaveArticles(sys.argv[2], articles)
     #ClassifyArticles('test_sample_2.db', 'data_bases/fiction_2.db', 'data_bases/science_2.db')
-    ClassifyArticles('test_sample.db', 'data_bases/fiction.db', 'data_bases/sci_article.db')
-#    total_word_prob_a = GetTotalWordProb('data_bases/sciAm2008-2011.db')
-#    total_word_prob_b = GetTotalWordProb('data_bases/fiction.db')
+    #ClassifyArticles('test_sample.db', 'data_bases/fiction.db', 'data_bases/sci_article.db')
